@@ -125,6 +125,14 @@ def processing():
             print(message)
             return make_response(jsonify({"message" : message}), status)
 
+        print("----")
+        print(tmp_dataset.compute_hash() == train_data.hash)
+        if tmp_dataset.compute_hash() == train_data.hash:
+            message = "Error : Test data should not be the same file as your training dataset"
+            print(message)
+            return make_response(jsonify({"message" : message}), status)
+
+
         global test_data
         test_data = Dataset()
         test_data.copy_object(tmp_dataset)
