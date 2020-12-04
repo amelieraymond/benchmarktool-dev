@@ -225,6 +225,6 @@ def start_training(data, methods=['POST']):
         model.train()
         socketio.emit('training_done', 1)
 
-    except Exception as ex: 
+    except Except as ex:
         print(ex)
         return socketio.emit('model', 0)

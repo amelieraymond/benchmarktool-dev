@@ -229,6 +229,7 @@ class FlairModel(Model):
 
 
     def test(self, test_data):
+        path = "./src/tmp/"
         filepath = path + self.model_name + '/best-model.pt'
         data = self.convert_format(test_data)
         model = SequenceTagger.load(filepath)
