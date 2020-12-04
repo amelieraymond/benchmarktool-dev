@@ -5,8 +5,8 @@ from flask_socketio import SocketIO
 import csv
 import pandas as pd
 import json
-from dataset import *
-from model import *
+from dataset import Dataset, TrainData
+from model import Model, SpacyModel, FlairModel
 
 """global variables"""
 models_list = []
@@ -22,7 +22,7 @@ def index():
 
 @server.route('/data_train')
 def data_train():
-    """ parsing of the metadata files"""
+    """ parsing of the datasets metadata files"""
     path = "datasets"
     files = []
     try:
@@ -46,18 +46,20 @@ def data_train():
 
                     files.append(data)
 
-            except:
+            except Exception as ex:
                 print("file doesn't exist")
+                raise ex                
 
-    except:
+    except Exception as ex:
         print("directory doesn't exist")
+        raise ex
     
     return render_template("data_train.html", files = files)
 
 @server.route('/models')
 def models():
-    """ parsing of the metadata files"""
-    path = "libraries"
+    """ parsing of the models metadata files"""
+    path = "src/models/libraries"
     files = []
     try:
         metafiles = os.listdir(path)
@@ -71,10 +73,12 @@ def models():
                     data["options"] = list(map(list, data["options"].items()))
                     files.append(data)
 
-            except:
-                print("cannot read the metafile")    
-    except:
+            except Exception as ex:
+                print("cannot read the metafile")
+                raise ex
+    except Exception as ex:
         print("directory doesn't exist")
+        raise ex
     
     return render_template("models.html", files = files)
 
@@ -109,7 +113,7 @@ def processing():
         content = content.read().decode('utf-8')
         content = json.loads(content)
 
-        tmp_dataset = Dataset("test_data")
+        tmp_dataset = Dataset(filename)
 
         if not tmp_dataset.filter_json(content) : 
             message = "incorrect test data structure (1)"
@@ -128,8 +132,9 @@ def processing():
         status = 200
         return make_response(jsonify({"message" : "JSON received"}), status)
 
-    except:
-        return make_response(jsonify({"message" : "cannot open the file"}), status)
+    except Exception as ex:
+        print(ex)
+        return make_response(jsonify({"message" : str(ex)}), status)
 
 
 @server.route('/progression')
@@ -150,12 +155,13 @@ def add_train():
 
         global train_data
         train_data = TrainData(filename)
-            
+        
+        
         if not train_data.filter_json(content) : 
             message = "incorrect data structure (1)"
             print(message)
             return make_response(jsonify({"message" : message}), status)
-
+        
         if not train_data.is_correct() :
             message = "incorrect data structure (2)"
             print(message)
@@ -171,8 +177,9 @@ def add_train():
         status = 200
         return make_response(jsonify({"message" : "JSON received"}), status) #200 = success
 
-    except:
-        return make_response(jsonify({"message" : "cannot open the file"}), status)
+    except Exception as ex:
+        print(ex)
+        return make_response(jsonify({"message" : str(ex)}), status)
 
 
 
@@ -187,7 +194,8 @@ def select_train_data(filename, methods=['POST']):
         
             socketio.emit('selected_train_data', 1)
 
-    except:
+    except Exception as ex:
+        print(ex)
         socketio.emit('selected_train_data', 0)
 
 
@@ -217,5 +225,6 @@ def start_training(data, methods=['POST']):
         model.train()
         socketio.emit('training_done', 1)
 
-    except: 
+    except Exception as ex: 
+        print(ex)
         return socketio.emit('model', 0)

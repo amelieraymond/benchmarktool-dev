@@ -1,16 +1,3 @@
-from pathlib import Path
-from dataset import Dataset, TrainData
-import os
-
-#spaCy imports
-import spacy
-from tqdm import tqdm
-from spacy import displacy
-from spacy.scorer import Scorer
-import random
-from spacy.gold import GoldParse
-
-
 #flair imports
 from flair.data import Corpus
 from flair.datasets import CSVClassificationCorpus, ColumnCorpus
@@ -19,129 +6,8 @@ from flair.trainers import ModelTrainer
 from flair.models import SequenceTagger
 from typing import List
 from flair.data import Sentence
-import re
 import csv
 import pandas as pd
-
-
-class Model(object):
-    def __init__(self, model_format, parameters):
-        self.model_name = parameters['model_name']
-        self.nb_iter = int(parameters['nb_iter'])
-        self.training_data = None
-        self.is_ready = 0
-        self.model_format=model_format.lower()
-        self.losses = None
-
-    def add_training_data(self, training_data):
-        self.training_data = training_data
-
-    def write_data(self,scores,csv_file):
-        fieldnames = ['model_name', 'precision', 'recall', 'f_score','score_by_label', 'losses']
-        scores["losses"] = self.losses
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writerow(scores)
-
-
-
-
-
-class SpacyModel(Model):
-    def __init__(self, parameters, model=None):
-        Model.__init__(self,
-                        model_format="spacy_format",
-                        parameters=parameters)
-
-        self.model = model
-        self.visuals = []
-    
-    def get_visuals(self):
-        return self.visuals 
-
-    def convert_format(self, dataset):
-        json_file=dataset.file
-        data=[]
-        for obj in json_file :
-            entities = []
-            for e in obj['entities'] :
-                entities.append(tuple(e))
-            data.append((obj['text'], {'entities' : entities}))
-        return data
-
-    def train(self):
-        if self.model is not None:
-            self.nlp = spacy.load(model)
-            # print("Loaded model '%s'" % model)
-        else:
-            self.nlp = spacy.blank('fr')
-            # print("Created new model")
-
-
-        if 'ner' not in self.nlp.pipe_names:
-            self.ner = self.nlp.create_pipe('ner')
-            self.nlp.add_pipe(self.ner)
-        else:
-            self.ner = self.nlp.get_pipe('ner')
-            
-
-        if self.model is None:
-            self.optimizer = self.nlp.begin_training()
-        else:
-            self.optimizer = self.nlp.entity.create_optimizer()
-
-        labels = [ label for label in self.training_data.labels]
-        for l in labels :
-            self.ner.add_label(l)
-
-        self.training_data = self.convert_format(self.training_data)
-        other_pipes = [pipe for pipe in self.nlp.pipe_names if pipe != 'ner']
-        
-        with self.nlp.disable_pipes(*other_pipes):
-            training_loss = []
-            for _ in range(self.nb_iter):
-                random.shuffle(self.training_data)
-                losses = {}
-                
-                for text, annotations in tqdm(self.training_data):
-                    self.nlp.update([text], [annotations], sgd=self.optimizer, drop=0.35,
-                        losses=losses)
-                print(losses)
-                training_loss.append(losses["ner"])
-            print(training_loss)
-        self.losses = training_loss
-        self.is_ready = 1
-
-                
-    def test(self, test_data):
-        data = self.convert_format(test_data)
-        res={"model_name" : self.model_name}
-        scorer = Scorer()
-        for sents, ents in data:
-            doc_gold = self.nlp.make_doc(sents)
-            gold = GoldParse(doc_gold, entities=ents['entities'])
-            pred_value = self.nlp(sents)
-            visual = displacy.render(pred_value, style="ent")
-            visual = visual.replace("\n\n","\n")
-            self.visuals.append(visual)
-            scorer.score(pred_value, gold)
-            score = scorer.scores
-        res["precision"] = score["ents_p"]
-        res["recall"] = score["ents_r"]
-        res["f_score"] = score["ents_f"]
-        score["ents_per_type"]
-        res["score_by_label"] = score["ents_per_type"]
-        return res
-
-    """save : not used for now
-    def save(self):
-        if self.out_dir is not None:
-            self.out_dir = Path(self.out_dir)
-        if not self.out_dir.exists():
-            self.out_dir.mkdir()
-        self.nlp.to_disk(self.out_dir)
-        print("Modele saved in :", self.out_dir)
-    """
-
 
 class FlairModel(Model):
     """Class to train/test a model using flair.""" 
@@ -156,6 +22,7 @@ class FlairModel(Model):
         filepath = "src/tmp/format.txt"
         if os.path.exists(filepath):
             os.remove(filepath)
+
         file = open(filepath, "w")
         pos_beg = 0
         pos_end = 1
@@ -171,6 +38,7 @@ class FlairModel(Model):
 
             if not matches:
                 print("error")
+                return
 
             for m in matches:
                 file.write(m.group())
@@ -183,11 +51,13 @@ class FlairModel(Model):
                     annot_end = e[1]
                     label = e[2]
                     #At the beginning of the entity's position
-                    if pos_beg == annot_beg:
+                    if pos_beg != annot_beg:
+                        break
+                    else:
                         file.write("B-"+label)
                         
                     #between the entity's position
-                    elif pos_beg > annot_beg and pos_end <= annot_end:
+                    if pos_beg > annot_beg and pos_end <= annot_end:
                         file.write("I-"+label)
                     else:
                         file.write("O")
