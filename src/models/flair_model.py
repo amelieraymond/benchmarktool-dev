@@ -1,3 +1,5 @@
+from model import *
+
 #flair imports
 from flair.data import Corpus
 from flair.datasets import CSVClassificationCorpus, ColumnCorpus
@@ -6,8 +8,9 @@ from flair.trainers import ModelTrainer
 from flair.models import SequenceTagger
 from typing import List
 from flair.data import Sentence
-import csv
 import pandas as pd
+import os
+import re
 
 class FlairModel(Model):
     """Class to train/test a model using flair.""" 
@@ -70,35 +73,34 @@ class FlairModel(Model):
 
     def train(self):
         path = "./src/tmp/"
-        filepath = path + self.model_name + "/best-model.pt"
-        if not os.path.exists(filepath):
-            self.training_data = self.convert_format(self.training_data)
-        
-            corpus: Corpus = ColumnCorpus(".", {0: 'text', 1: 'ner'},
-                                        train_file=self.training_data
-                                        )
-            tag_dictionary = corpus.make_tag_dictionary(tag_type='ner')
-            embedding_types: List[TokenEmbeddings] = [
+        self.training_data = self.convert_format(self.training_data)
+    
+        corpus: Corpus = ColumnCorpus(".", {0: 'text', 1: 'ner'},
+                                    train_file=self.training_data
+                                    )
+        tag_dictionary = corpus.make_tag_dictionary(tag_type='ner')
+        embedding_types: List[TokenEmbeddings] = [
 
-                WordEmbeddings('fr'),
-                FlairEmbeddings('fr-forward'),
-                FlairEmbeddings('fr-backward'),
-            ]
+            WordEmbeddings('fr'),
+            FlairEmbeddings('fr-forward'),
+            FlairEmbeddings('fr-backward'),
+        ]
 
-            embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
-            tagger: SequenceTagger = SequenceTagger(hidden_size=256,
-                                                    embeddings=embeddings,
-                                                    tag_dictionary=tag_dictionary,
-                                                    tag_type='ner',
-                                                    use_crf=True)
-            self.trainer = ModelTrainer(tagger, corpus)
-            save_path = path + self.model_name
-            self.trainer.train(save_path,learning_rate=self.learning_rate,mini_batch_size=self.batch_size, max_epochs=self.nb_iter,embeddings_storage_mode=self.mode)
+        embeddings: StackedEmbeddings = StackedEmbeddings(embeddings=embedding_types)
+        tagger: SequenceTagger = SequenceTagger(hidden_size=256,
+                                                embeddings=embeddings,
+                                                tag_dictionary=tag_dictionary,
+                                                tag_type='ner',
+                                                use_crf=True)
+        self.trainer = ModelTrainer(tagger, corpus)
+        save_path = path + self.model_name
+        self.trainer.train(save_path,learning_rate=self.learning_rate,mini_batch_size=self.batch_size, max_epochs=self.nb_iter,embeddings_storage_mode=self.mode)
         self.is_ready = 1
 
 
 
     def test(self, test_data):
+        path = "./src/tmp/"
         filepath = path + self.model_name + '/best-model.pt'
         data = self.convert_format(test_data)
         model = SequenceTagger.load(filepath)

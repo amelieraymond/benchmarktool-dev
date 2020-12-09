@@ -6,9 +6,15 @@ import csv
 import pandas as pd
 import json
 from dataset import Dataset, TrainData
-from model import Model, SpacyModel, FlairModel
+import atexit
+import shutil
 
-"""global variables"""
+# import models here
+from models.spacy_model import SpacyModel
+from models.flair_model import FlairModel
+
+
+# global variables
 models_list = []
 train_data  = None
 test_data  = None
@@ -125,8 +131,6 @@ def processing():
             print(message)
             return make_response(jsonify({"message" : message}), status)
 
-        print("----")
-        print(tmp_dataset.compute_hash() == train_data.hash)
         if tmp_dataset.compute_hash() == train_data.hash:
             message = "Error : Test data should not be the same file as your training dataset"
             print(message)
@@ -233,6 +237,25 @@ def start_training(data, methods=['POST']):
         model.train()
         socketio.emit('training_done', 1)
 
-    except Except as ex:
+    except Exception as ex:
         print(ex)
         return socketio.emit('model', 0)
+
+
+### trigger exit event
+def on_exit():
+    """ remove tmp folder on exit"""
+    path = os.path.join(os.getcwd(), 'src/tmp')
+    if os.path.exists(path):
+        print("deleting temporary files")
+        shutil.rmtree(path)
+
+    """ remove __pycache__"""
+    path = os.path.join(os.getcwd(), 'src/__pycache__')
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    path = os.path.join(os.getcwd(), 'src/app/__pycache__')
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+atexit.register(on_exit)

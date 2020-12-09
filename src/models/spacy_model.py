@@ -1,6 +1,12 @@
-from pathlib import Path
-from dataset import Dataset, TrainData
-import os
+from model import *
+
+#spaCy imports
+import spacy
+from tqdm import tqdm
+from spacy import displacy
+from spacy.scorer import Scorer
+import random
+from spacy.gold import GoldParse
 
 
 class SpacyModel(Model):
