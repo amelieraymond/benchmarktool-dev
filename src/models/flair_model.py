@@ -16,7 +16,6 @@ class FlairModel(Model):
     """Class to train/test a model using flair.""" 
     def __init__(self, parameters):
         Model.__init__(self, model_format="bio_format", parameters=parameters)
-        self.model_name = parameters['model_name']
         self.learning_rate= float(parameters['lr'])
         self.batch_size= int(parameters['batch'])
         self.mode=parameters['mode']

@@ -257,5 +257,8 @@ def on_exit():
     path = os.path.join(os.getcwd(), 'src/app/__pycache__')
     if os.path.exists(path):
         shutil.rmtree(path)
+    path = os.path.join(os.getcwd(), 'src/models/__pycache__')
+    if os.path.exists(path):
+        shutil.rmtree(path)
 
 atexit.register(on_exit)
