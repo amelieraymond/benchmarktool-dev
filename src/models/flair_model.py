@@ -52,14 +52,13 @@ class FlairModel(Model):
                     annot_beg = e[0]
                     annot_end = e[1]
                     label = e[2]
+
                     #At the beginning of the entity's position
-                    if pos_beg != annot_beg:
-                        break
-                    else:
+                    if pos_beg == annot_beg:
                         file.write("B-"+label)
                         
                     #between the entity's position
-                    if pos_beg > annot_beg and pos_end <= annot_end:
+                    elif pos_beg > annot_beg and pos_end <= annot_end:
                         file.write("I-"+label)
                     else:
                         file.write("O")
